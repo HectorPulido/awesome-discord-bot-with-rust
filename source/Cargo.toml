@@ -4,6 +4,14 @@ version = "0.1.0"
 authors = ["Hector Pulido"]
 edition = "2018"
 
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
+[[bin]]
+name = "bot"
+path = "src/bot.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -16,3 +24,5 @@ dotenv = "0.15"
 discord = { git = "https://github.com/SpaceManiac/discord-rs" }
 regex = "1"
 lazy_static = "1.4.0"
+serde = "1.0.126"
+actix-web = "3"

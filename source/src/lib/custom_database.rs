@@ -1,19 +1,23 @@
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres::Client;
 use postgres_openssl::MakeTlsConnector;
+use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use discord::model;
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Resource {
     pub user_id: String,
     pub channel_id: String,
     pub url: String,
     pub description: String,
+    pub shash: String,
     pub type_id: i32,
-    // TODO HASHING
 }
 
+#[allow(dead_code)]
 impl Resource {
     pub fn new(message: &model::Message) -> Self {
         let author_id = &message.author.id;
@@ -27,13 +31,16 @@ impl Resource {
             let embed_title = embed.get("title").unwrap().to_string();
             let embed_description = embed.get("description").unwrap().to_string();
             url = embed.get("url").unwrap().to_string();
+            url = url.to_lowercase().trim().to_string();
 
             description = format!(
                 "{}|url: {} + {} + {}",
                 description, url, embed_title, embed_description
             );
         }
-        description = description.to_lowercase();
+        description = description.to_lowercase().trim().to_string();
+
+        let shash = Resource::_calculate_hash(&description).to_string();
 
         return Self {
             user_id: author_id.to_string(),
@@ -41,7 +48,14 @@ impl Resource {
             url: url,
             description: description,
             type_id: 10,
+            shash: shash,
         };
+    }
+
+    fn _calculate_hash<T: Hash>(t: &T) -> u64 {
+        let mut s = DefaultHasher::new();
+        t.hash(&mut s);
+        s.finish()
     }
 }
 
@@ -49,6 +63,7 @@ pub struct DiscordDatabase {
     db: postgres::Client,
 }
 
+#[allow(dead_code)]
 impl DiscordDatabase {
     pub fn new(database_uri: String) -> Self {
         let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
@@ -59,10 +74,14 @@ impl DiscordDatabase {
         return Self { db: db };
     }
 
-    pub fn _insert_resource(&mut self, resource: Resource) -> bool {
+    pub fn insert_resource(&mut self, resource: Resource) -> bool {
+        if resource.url.is_empty() || resource.description.is_empty() {
+            return false;
+        }
+
         let query = "INSERT INTO public.resources(\
-            user_id, channel_id, url, description, type_id)
-            VALUES ($1, $2, $3, $4, $5);";
+            user_id, channel_id, url, description, type_id, shash)
+            VALUES ($1, $2, $3, $4, $5, $6);";
 
         let result = self.db.execute(
             query,
@@ -72,6 +91,7 @@ impl DiscordDatabase {
                 &resource.url,
                 &resource.description,
                 &resource.type_id,
+                &resource.shash,
             ],
         );
         match result {
@@ -80,7 +100,41 @@ impl DiscordDatabase {
         }
     }
 
-    pub fn _select_random_resource(&mut self, description: &str) -> Vec<Resource> {
+    pub fn select_resources(&mut self, description: &str, limit: u16, page: u16) -> Vec<Resource> {
+        let mut resources: Vec<Resource> = Vec::new();
+
+        let description = format!("%{}%", description).to_string();
+
+        let query = "SELECT * FROM resources WHERE \
+            description LIKE $1 ORDER BY id DESC";
+
+        let query = format!("{} OFFSET {} LIMIT {}", query, page * limit, limit);
+        let query = query.as_str();
+
+        let data = self.db.query(query, &[&description]).unwrap();
+
+        for row in data {
+            let url: String = row.get("url");
+            let url = url.replace("\"", "");
+
+            let description: String = row.get("description");
+            let user_id: String = row.get("user_id");
+            let channel_id: String = row.get("channel_id");
+
+            let resource = Resource {
+                user_id: user_id,
+                channel_id: channel_id,
+                url: url,
+                description: description,
+                ..Default::default()
+            };
+
+            resources.push(resource);
+        }
+        return resources;
+    }
+
+    pub fn select_random_resource(&mut self, description: &str) -> Vec<Resource> {
         let mut resources: Vec<Resource> = Vec::new();
 
         let description = format!("%{}%", description).to_string();
