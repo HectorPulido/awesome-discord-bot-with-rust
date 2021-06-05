@@ -1,4 +1,4 @@
-use super::bot_state::BotState;
+use super::super::bot_state::BotState;
 use discord::model::Message;
 
 #[allow(dead_code)]

@@ -1,5 +1,5 @@
-use super::bot_state::BotState;
-use super::custom_database::Resource;
+use super::super::bot_state::BotState;
+use super::super::custom_database::Resource;
 use discord::model::{Message, ReactionEmoji};
 
 #[allow(dead_code)]
