@@ -1,0 +1,20 @@
+[package]
+name = "awesome-discord-bot"
+version = "0.1.0"
+authors = ["Hector Pulido <hectorandrespp@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dotenv = "0.15.0"
+regex = "1"
+urlencoding = "2.1.0"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+serde_json = "1.0"
+
+[dependencies.serenity]
+default-features = false
+features = ["client", "gateway", "rustls_backend", "model"]
+version = "0.10"

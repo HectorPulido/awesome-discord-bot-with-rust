@@ -1,3 +1,0 @@
-function subscribe() {
-    window.open("/");
-}
