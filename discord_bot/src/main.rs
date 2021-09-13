@@ -35,12 +35,7 @@ impl EventHandler for Handler {
                         for embed in &msg.embeds {
                             let title = embed.title.as_ref().unwrap_or(&empty);
                             let description = embed.description.as_ref().unwrap_or(&empty);
-                            let url = embed
-                                .url
-                                .as_ref()
-                                .unwrap_or(&empty)
-                                .to_string()
-                                .to_lowercase();
+                            let url = embed.url.as_ref().unwrap_or(&empty).to_string();
                             let url = url.trim();
                             let description = format!("{} | {} | {}", title, description, url);
 
