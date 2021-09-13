@@ -24,10 +24,12 @@ impl EventHandler for Handler {
             return;
         }
 
+        println!("{:?}", msg);
+
         let endpoint = format!("{}records/", self.endpoint);
         match &self.channel_data[msg.channel_id.0.to_string()] {
             Value::String(record_type) => match record_type as &str {
-                "RE" | "JO" => {
+                "RS" | "JO" => {
                     let links = get_links(&msg.content);
                     for link in links {
                         let meta = get_metatags(&link).await;
@@ -37,7 +39,7 @@ impl EventHandler for Handler {
                         map.insert("record_index", meta);
                         map.insert("record_type", String::from(record_type));
 
-                        let _ = self
+                        let data = self
                             .client
                             .post(&endpoint)
                             .json(&map)
@@ -47,6 +49,8 @@ impl EventHandler for Handler {
                             .text()
                             .await
                             .unwrap();
+
+                        println!("Response: {:?}", data);
                         add_thumbs_up(&ctx, &msg).await;
                     }
                 }
@@ -63,7 +67,7 @@ impl EventHandler for Handler {
                         map.insert("data", url);
                         map.insert("record_index", filename);
                         map.insert("record_type", String::from(record_type));
-                        let _ = self
+                        let data = self
                             .client
                             .post(&endpoint)
                             .json(&map)
@@ -73,6 +77,8 @@ impl EventHandler for Handler {
                             .text()
                             .await
                             .unwrap();
+
+                        println!("Response: {:?}", data);
                         add_thumbs_up(&ctx, &msg).await;
                     }
                 }
@@ -97,6 +103,8 @@ impl EventHandler for Handler {
                 .text()
                 .await
                 .unwrap();
+
+            println!("Response: {:?}", resp);
 
             let resp = post_process(&resp, &msg);
 

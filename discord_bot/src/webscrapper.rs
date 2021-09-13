@@ -28,7 +28,5 @@ pub async fn get_metatags(url: &str) -> String {
 
     let data = data.chars();
     let data: String = data.into_iter().take(499).collect();
-
-    println!("{}", data);
     return data;
 }
