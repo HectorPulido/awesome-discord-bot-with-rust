@@ -20,8 +20,8 @@ This is a heroku based project
 
 3. Build the docker development and run it to make sure everything is ok
 ```
-docker build -t web:latest .
-docker run -d --name <herokuname> web:latest
+docker build -t worker:latest .
+docker run -d --name <herokuname> worker:latest
 ```
 
 4. You can deactivate like this
@@ -32,10 +32,10 @@ docker rm <herokuname>
 
 5. You can upload your project with this commands
 ```
-docker run -d --name <herokuname> web:latest
+docker run -d --name <herokuname> worker:latest
 heroku container:login
-heroku container:push web -a <herokuname>
-heroku container:release web -a <herokuname>
+heroku container:push worker -a <herokuname>
+heroku container:release worker -a <herokuname>
 ```
 
 
