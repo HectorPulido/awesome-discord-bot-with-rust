@@ -58,8 +58,6 @@ pub fn post_process(s: &str, message: &Message) -> Vec<String> {
 }
 
 pub fn get_links(s: &str) -> Vec<String> {
-    println!("{:?}", s);
-
     let re_title = Regex::new(r#"(^|\s|\n)*(https?://[^\s]+)($|\s|\n)*"#).unwrap();
 
     let mut vec = Vec::new();

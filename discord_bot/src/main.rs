@@ -24,34 +24,64 @@ impl EventHandler for Handler {
             return;
         }
 
-        println!("{:?}", msg);
+        println!("{}: {}", msg.author.name, msg.content);
 
         let endpoint = format!("{}records/", self.endpoint);
         match &self.channel_data[msg.channel_id.0.to_string()] {
             Value::String(record_type) => match record_type as &str {
                 "RS" | "JO" => {
-                    let links = get_links(&msg.content);
-                    for link in links {
-                        let meta = get_metatags(&link).await;
-                        let mut map = get_credentials(self);
+                    if msg.embeds.len() > 0 {
+                        let empty = String::from("");
+                        for embed in &msg.embeds {
+                            let title = embed.title.as_ref().unwrap_or(&empty);
+                            let description = embed.description.as_ref().unwrap_or(&empty);
+                            let url = embed
+                                .url
+                                .as_ref()
+                                .unwrap_or(&empty)
+                                .to_string()
+                                .to_lowercase();
+                            let url = url.trim();
+                            let description = format!("{} | {} | {}", title, description, url);
 
-                        map.insert("data", link);
-                        map.insert("record_index", meta);
-                        map.insert("record_type", String::from(record_type));
-
-                        let data = self
-                            .client
-                            .post(&endpoint)
-                            .json(&map)
-                            .send()
-                            .await
-                            .unwrap()
-                            .text()
-                            .await
-                            .unwrap();
-
-                        println!("Response: {:?}", data);
-                        add_thumbs_up(&ctx, &msg).await;
+                            let mut map = get_credentials(self);
+                            map.insert("data", url.to_string());
+                            map.insert("record_index", description);
+                            map.insert("record_type", String::from(record_type));
+                            let data = self
+                                .client
+                                .post(&endpoint)
+                                .json(&map)
+                                .send()
+                                .await
+                                .unwrap()
+                                .text()
+                                .await
+                                .unwrap();
+                            println!("Response: {:?}", data);
+                            add_thumbs_up(&ctx, &msg).await;
+                        }
+                    } else {
+                        let links = get_links(&msg.content);
+                        for link in links {
+                            let meta = get_metatags(&link).await;
+                            let mut map = get_credentials(self);
+                            map.insert("data", link);
+                            map.insert("record_index", meta);
+                            map.insert("record_type", String::from(record_type));
+                            let data = self
+                                .client
+                                .post(&endpoint)
+                                .json(&map)
+                                .send()
+                                .await
+                                .unwrap()
+                                .text()
+                                .await
+                                .unwrap();
+                            println!("Response: {:?}", data);
+                            add_thumbs_up(&ctx, &msg).await;
+                        }
                     }
                 }
                 "ME" => {
@@ -107,6 +137,8 @@ impl EventHandler for Handler {
             println!("Response: {:?}", resp);
 
             let resp = post_process(&resp, &msg);
+
+            println!("Response: {:?}", resp);
 
             for phrase in resp {
                 if let Err(why) = msg.channel_id.say(&ctx.http, phrase).await {

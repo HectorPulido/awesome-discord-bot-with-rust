@@ -5,7 +5,17 @@ pub async fn get_metatags(url: &str) -> String {
     let re_description =
         Regex::new(r#"<meta.*name=".*description.*".*content="(.+)"\s?/?>"#).unwrap();
 
-    let resp = reqwest::get(url).await.unwrap().text().await.unwrap();
+    let client = reqwest::Client::new();
+
+    let resp = client
+        .get(url)
+        .header("user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36")
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
     let resp = resp.as_str();
 
     let mut title = String::new();
@@ -21,6 +31,8 @@ pub async fn get_metatags(url: &str) -> String {
     }
 
     let data: String = format!("{} | {} | {}", title, description, url);
+
+    println!("{}", title);
 
     if data.len() < 499 {
         return data;
