@@ -120,7 +120,7 @@ impl EventHandler for Handler {
         if mentions_me(&self, &msg) {
             let content = clean_text(&msg.content);
             let content = encode(&content);
-            let endpoint = format!("{}phrase/{}", self.endpoint, content);
+            let endpoint = format!("{}phrase/{}/", self.endpoint, content);
             let map = get_credentials(&self);
 
             let resp = self
