@@ -14,6 +14,6 @@ RUN apt-get update && apt-get install curl pkg-config libssl-dev build-essential
 WORKDIR /app
 
 COPY --from=0 /app/.env /app
-COPY --from=0 /app/target/release/ /app
+COPY --from=0 /app/target/release/awesome-discord-bot /app
 
 CMD ./awesome-discord-bot
