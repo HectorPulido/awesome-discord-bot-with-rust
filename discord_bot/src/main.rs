@@ -119,7 +119,7 @@ impl Handler {
         }
 
         for line in &history[&channel] {
-            conversation = format!("{}\n{}", conversation, line);
+            conversation = format!("{}{}\n", conversation, line);
         }
 
         return conversation;
@@ -127,8 +127,6 @@ impl Handler {
 
     async fn manage_mentions(&self, ctx: &Context, msg: &Message) {
         let content = clean_text(&msg.content);
-
-        let history = self.show_msg_history(ctx, msg).await;
 
         self.add_msg_to_history(
             &ctx,
@@ -138,10 +136,13 @@ impl Handler {
         )
         .await;
 
+        let history = self.show_msg_history(ctx, msg).await;
+
         let endpoint = format!("{}phrase/", self.endpoint);
 
         let mut map = get_credentials(&self);
-        map.insert("query", &history);
+        map.insert("query", &content);
+        map.insert("history", &history);
 
         let resp = self
             .client
@@ -155,6 +156,8 @@ impl Handler {
             .unwrap();
 
         let resp = post_process(&resp, &msg);
+
+        println!("resp: {:?}", history);
 
         for phrase in resp {
             let clean_phrase = clean_text(&phrase);
