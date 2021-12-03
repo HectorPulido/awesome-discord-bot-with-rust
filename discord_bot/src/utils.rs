@@ -26,15 +26,15 @@ pub fn mentions_me(s: &Handler, msg: &Message) -> bool {
     return msg.mentions_user_id(s.bot_id);
 }
 
-pub fn get_credentials(s: &Handler) -> HashMap<&str, String> {
-    let mut map = HashMap::new();
-    map.insert("name", s.name.to_string());
-    map.insert("private_key", s.key.to_string());
+pub fn get_credentials(s: &Handler) -> HashMap<&str, &str> {
+    let mut map: HashMap<&str, &str> = HashMap::new();
+    map.insert("name", &s.name);
+    map.insert("private_key", &s.key);
     return map;
 }
 
 pub fn clean_text(s: &str) -> String {
-    let re = Regex::new(r"<@!\d+>").unwrap();
+    let re = Regex::new(r"<@!?\d+>").unwrap();
     let result = re.replace_all(s, "");
     let result = result.to_string().trim().to_string();
 
