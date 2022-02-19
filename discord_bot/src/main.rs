@@ -1,5 +1,11 @@
+mod emojis_only;
+mod nlu;
+mod resources;
 mod utils;
-mod webscrapper;
+
+use emojis_only::emojis_channel_manager::manage_emojis_channel;
+use nlu::nlu_manager::manage_mentions;
+use resources::resource_manager::{manage_memes, manage_resources};
 
 use serde_json::Value;
 use std::env;
@@ -12,10 +18,7 @@ use serenity::{
     prelude::*,
 };
 
-use utils::{
-    add_thumbs_up, clean_text, get_credentials, get_links, mentions_me, post_process, Handler,
-};
-use webscrapper::get_metatags;
+use utils::{add_thumbs_up, mentions_me, Handler};
 
 impl Handler {
     async fn save_and_show(
@@ -27,7 +30,7 @@ impl Handler {
         record_type: &str,
     ) {
         let endpoint = format!("{}records/", self.endpoint);
-        let mut map = get_credentials(self);
+        let mut map = self.get_credentials();
         map.insert("data", link);
         map.insert("record_index", meta);
         map.insert("record_type", record_type);
@@ -43,36 +46,11 @@ impl Handler {
         add_thumbs_up(&ctx, &msg).await;
     }
 
-    async fn manage_resources(&self, ctx: &Context, msg: &Message, record_type: &str) {
-        if msg.embeds.len() > 0 {
-            let empty = String::from("");
-            for embed in &msg.embeds {
-                let title = embed.title.as_ref().unwrap_or(&empty);
-                let description = embed.description.as_ref().unwrap_or(&empty);
-                let link = embed.url.as_ref().unwrap_or(&empty).to_string();
-                let link = link.trim();
-                let meta = format!("{} | {} | {}", title, description, link);
-
-                self.save_and_show(ctx, msg, &link, &meta, record_type)
-                    .await;
-            }
-        } else {
-            let links = get_links(&msg.content);
-            for link in links {
-                let meta = get_metatags(&link).await;
-                self.save_and_show(ctx, msg, &link, &meta, record_type)
-                    .await;
-            }
-        }
-    }
-
-    async fn manage_memes(&self, ctx: &Context, msg: &Message, record_type: &str) {
-        for attch in &msg.attachments {
-            let link: &str = &attch.proxy_url;
-            let meta: &str = &attch.filename;
-
-            self.save_and_show(ctx, msg, link, meta, record_type).await;
-        }
+    pub fn get_credentials(&self) -> HashMap<&str, &str> {
+        let mut map: HashMap<&str, &str> = HashMap::new();
+        map.insert("name", &self.name);
+        map.insert("private_key", &self.key);
+        return map;
     }
 
     async fn add_msg_to_history(
@@ -124,55 +102,6 @@ impl Handler {
 
         return conversation;
     }
-
-    async fn manage_mentions(&self, ctx: &Context, msg: &Message) {
-        let content = clean_text(&msg.content);
-
-        self.add_msg_to_history(
-            &ctx,
-            "H".to_string(),
-            &content,
-            msg.channel_id.0.to_string(),
-        )
-        .await;
-
-        let history = self.show_msg_history(ctx, msg).await;
-
-        let endpoint = format!("{}phrase/", self.endpoint);
-
-        let mut map = get_credentials(&self);
-        map.insert("query", &content);
-        map.insert("history", &history);
-
-        let resp = self
-            .client
-            .post(endpoint)
-            .json(&map)
-            .send()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap();
-
-        let resp = post_process(&resp, &msg);
-
-        println!("resp: {:?}", history);
-
-        for phrase in resp {
-            let clean_phrase = clean_text(&phrase);
-            self.add_msg_to_history(
-                &ctx,
-                "P".to_string(),
-                &clean_phrase,
-                msg.channel_id.0.to_string(),
-            )
-            .await;
-            if let Err(why) = msg.channel_id.say(&ctx.http, phrase).await {
-                println!("Error sending message: {:?}", why);
-            }
-        }
-    }
 }
 
 #[async_trait]
@@ -182,19 +111,18 @@ impl EventHandler for Handler {
             return;
         }
 
-        println!("{}: {}", msg.author.name, msg.content);
-
         match &self.channel_data[msg.channel_id.0.to_string()] {
             Value::String(record_type) => match record_type as &str {
-                "RS" | "JO" => self.manage_resources(&ctx, &msg, record_type).await,
-                "ME" => self.manage_memes(&ctx, &msg, record_type).await,
+                "RS" | "JO" => manage_resources(&self, &ctx, &msg, record_type).await,
+                "ME" => manage_memes(&self, &ctx, &msg, record_type).await,
+                "EM" => manage_emojis_channel(&self, &ctx, &msg).await,
                 _ => {}
             },
             _ => {}
         }
 
         if mentions_me(&self, &msg) {
-            self.manage_mentions(&ctx, &msg).await;
+            manage_mentions(self, &ctx, &msg).await;
         }
     }
 

@@ -42,3 +42,15 @@ pub async fn get_metatags(url: &str) -> String {
     let data: String = data.into_iter().take(499).collect();
     return data;
 }
+
+pub fn get_links(s: &str) -> Vec<String> {
+    let re_title = Regex::new(r#"(^|\s|\n)*(https?://[^\s]+)($|\s|\n)*"#).unwrap();
+
+    let mut vec = Vec::new();
+
+    for cap in re_title.captures_iter(s) {
+        vec.push(String::from(&cap[2]));
+    }
+
+    return vec;
+}
