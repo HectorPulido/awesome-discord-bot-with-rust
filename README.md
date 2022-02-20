@@ -7,7 +7,7 @@ This is a discord bot that can connect with an brain API, it response as a chatb
 * Conection with the API
 * Send the resources to the API
 * Show responses
-
+* Only emojis channels
 
 ## How it works
 This is a heroku based project
