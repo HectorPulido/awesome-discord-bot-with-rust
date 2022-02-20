@@ -7,7 +7,7 @@ use emojis_only::emojis_channel_manager::manage_emojis_channel;
 use nlu::nlu_manager::manage_mentions;
 use resources::resource_manager::{manage_memes, manage_resources};
 
-use serde_json::Value;
+use serde_json::{Error as serdeError, Value};
 use std::env;
 use std::{collections::HashMap, sync::Arc};
 
@@ -18,32 +18,18 @@ use serenity::{
     prelude::*,
 };
 
-use utils::{add_thumbs_up, mentions_me, Handler};
+use utils::{add_reaction, mentions_me, Handler};
 
 impl Handler {
-    async fn save_and_show(
-        &self,
-        ctx: &Context,
-        msg: &Message,
-        link: &str,
-        meta: &str,
-        record_type: &str,
-    ) {
-        let endpoint = format!("{}records/", self.endpoint);
-        let mut map = self.get_credentials();
-        map.insert("data", link);
-        map.insert("record_index", meta);
-        map.insert("record_type", record_type);
-        self.client
-            .post(endpoint)
-            .json(&map)
-            .send()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap();
-        add_thumbs_up(&ctx, &msg).await;
+    #[allow(dead_code)]
+    pub async fn add_thumbs_down(context: &Context, message: &Message) {
+        let unicode_reaction = String::from("👎");
+        let _ = add_reaction(unicode_reaction, context, message).await;
+    }
+
+    pub async fn add_thumbs_up(context: &Context, message: &Message) {
+        let unicode_reaction = String::from("👍");
+        let _ = add_reaction(unicode_reaction, context, message).await;
     }
 
     pub fn get_credentials(&self) -> HashMap<&str, &str> {
@@ -51,6 +37,32 @@ impl Handler {
         map.insert("name", &self.name);
         map.insert("private_key", &self.key);
         return map;
+    }
+
+    pub async fn get_initial_config(&mut self) {
+        let endpoint = format!("{}/initial-config/", self.endpoint);
+        let map = self.get_credentials();
+        let channel_data = self.client.post(endpoint).json(&map).send().await;
+
+        if let Err(err) = channel_data {
+            println!("Initial config connection failed {}", err);
+            return;
+        }
+        let channel_data = channel_data.unwrap().text().await;
+
+        if let Err(err) = channel_data {
+            println!("Initial config load failed {}", err);
+            return;
+        }
+        let channel_data = channel_data.unwrap();
+        let channel_data: Result<Value, serdeError> = serde_json::from_str(&channel_data);
+
+        if let Err(err) = channel_data {
+            println!("Initial config format invalid {}", err);
+            return;
+        }
+
+        self.channel_data = Some(channel_data.unwrap());
     }
 
     async fn add_msg_to_history(
@@ -107,11 +119,17 @@ impl Handler {
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
+        if self.channel_data == None {
+            println!("Initial config load failed, please restart the program");
+            return;
+        }
         if msg.author.bot {
             return;
         }
 
-        match &self.channel_data[msg.channel_id.0.to_string()] {
+        let channel_data = self.channel_data.as_ref().unwrap();
+
+        match &channel_data[msg.channel_id.0.to_string()] {
             Value::String(record_type) => match record_type as &str {
                 "RS" | "JO" => manage_resources(&self, &ctx, &msg, record_type).await,
                 "ME" => manage_memes(&self, &ctx, &msg, record_type).await,
@@ -140,13 +158,11 @@ impl TypeMapKey for History {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to load .env file");
-    let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
-    let endpoint = env::var("BRAIN_ENDPOINT").expect("Expected a token in the environment");
-    let key = env::var("BRAIN_KEY").expect("Expected a token in the environment");
-    let name = env::var("BRAIN_NAME").expect("Expected a token in the environment");
-
-    let channel_data = env::var("CONFIG_CHANNELS").expect("Expected a token in the environment");
-    let channel_data: Value = serde_json::from_str(&channel_data).unwrap();
+    let token = env::var("DISCORD_TOKEN").expect("Expected a DISCORD_TOKEN in the environment");
+    let endpoint =
+        env::var("BRAIN_ENDPOINT").expect("Expected a BRAIN_ENDPOINT in the environment");
+    let key = env::var("BRAIN_KEY").expect("Expected a BRAIN_KEY in the environment");
+    let name = env::var("BRAIN_NAME").expect("Expected a BRAIN_NAME in the environment");
 
     let client = reqwest::Client::new();
 
@@ -156,15 +172,17 @@ async fn main() {
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
-    let mut_bot_handler = Handler {
+    let mut mut_bot_handler = Handler {
         owner_id: _owner_id,
         bot_id: _bot_id,
         endpoint,
         key,
         name,
         client,
-        channel_data,
+        channel_data: None,
     };
+
+    mut_bot_handler.get_initial_config().await;
 
     let mut client = Client::builder(&token)
         .event_handler(mut_bot_handler)

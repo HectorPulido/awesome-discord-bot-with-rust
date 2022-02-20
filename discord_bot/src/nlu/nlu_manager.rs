@@ -1,5 +1,5 @@
-use super::super::utils::Handler;
-use super::utils::*;
+use super::utils::{clean_text, post_process, remove_links};
+use crate::utils::Handler;
 use serenity::{model::channel::Message, prelude::*};
 
 pub async fn manage_mentions(handler: &Handler, ctx: &Context, msg: &Message) {
@@ -16,7 +16,7 @@ pub async fn manage_mentions(handler: &Handler, ctx: &Context, msg: &Message) {
 
     let history = handler.show_msg_history(ctx, msg).await;
 
-    let endpoint = format!("{}phrase/", handler.endpoint);
+    let endpoint = format!("{}/phrase/", handler.endpoint);
 
     let mut map = handler.get_credentials();
     map.insert("query", &content);

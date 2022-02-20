@@ -12,7 +12,7 @@ pub struct Handler {
     pub key: String,
     pub name: String,
     pub client: reqwest::Client,
-    pub channel_data: Value,
+    pub channel_data: Option<Value>,
 }
 
 #[allow(dead_code)]
@@ -22,17 +22,6 @@ pub fn author_is_owner(s: &Handler, msg: &Message) -> bool {
 
 pub fn mentions_me(s: &Handler, msg: &Message) -> bool {
     return msg.mentions_user_id(s.bot_id);
-}
-
-#[allow(dead_code)]
-pub async fn add_thumbs_down(context: &Context, message: &Message) {
-    let unicode_reaction = String::from("👎");
-    let _ = add_reaction(unicode_reaction, context, message).await;
-}
-
-pub async fn add_thumbs_up(context: &Context, message: &Message) {
-    let unicode_reaction = String::from("👍");
-    let _ = add_reaction(unicode_reaction, context, message).await;
 }
 
 pub async fn add_reaction(unicode_reaction: String, context: &Context, message: &Message) {
