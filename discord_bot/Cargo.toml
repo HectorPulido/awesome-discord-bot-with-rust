@@ -13,6 +13,7 @@ urlencoding = "2.1.0"
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 serde_json = "1.0"
+csv = "1.1.6"
 
 [dependencies.serenity]
 default-features = false
