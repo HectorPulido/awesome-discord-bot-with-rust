@@ -1,6 +1,7 @@
 mod emojis_only;
 mod nlu;
 mod resources;
+mod rpg;
 mod utils;
 
 use emojis_only::emojis_channel_manager::manage_emojis_channel;
